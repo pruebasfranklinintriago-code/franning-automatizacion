@@ -1,6 +1,18 @@
 name: Actualizar Base de Datos de Marcas
 
 on:
+name: Actualizar Base de Datos de Marcas
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 1 * *'
+
+permissions:
+  contents: write
+
+jobs:
+# ... (el resto del archivo sigue igual)
   workflow_dispatch: # Permite ejecutarlo manualmente
   schedule:
     - cron: '0 3 1 * *' # Se ejecuta el día 1 de cada mes
