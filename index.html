@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FranNing · Verificador de Marcas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--verde:#a5eb04;--gris:#666;--magenta:#b404fc;--texto:#222;--suave:#888;--borde:#e8e8e8;--fondo:#fafafa}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--fondo);color:var(--texto);font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-weight:400;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:clip}
+h1,h2,h3,button,.logo,.badge{font-weight:700;letter-spacing:-0.02em}
+body{padding:0;min-height:100vh;display:flex;flex-direction:column}
+.wrap{max-width:920px;margin:0 auto;padding:0 24px;flex:1}
+.top{padding:28px 0 20px;display:flex;flex-direction:column;gap:4px}
+.top .logo{font-size:3.8rem;letter-spacing:-0.06em;line-height:1;color:#111;margin:0;display:inline-block;}
+.top .logo .punto{color:var(--verde);font-size:4.4rem}
+.top .sub{font-size:.82rem;color:var(--suave);margin:0;}
+@media (max-width:600px){ .top .logo{font-size:2.6rem} .top .logo .punto{font-size:3rem} }
+
+.sticky{position:sticky;top:0;z-index:100;background:rgba(250,250,250,.98);backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid transparent;transition:border-color .15s, box-shadow .15s;padding-bottom: 10px;}
+.sticky.fijo{border-bottom-color:var(--borde);box-shadow:0 4px 12px rgba(0,0,0,.04)}
+.buscador{position:relative; display:flex; gap:10px;}
+.buscador input[type=text]{flex:1; padding:13px 18px 13px 46px;font-size:1.02rem;border:2px solid var(--borde);border-radius:10px;background:#fff;color:#111;font-family:inherit;transition:border-color .15s}
+.buscador input[type=text]:focus{outline:none;border-color:var(--verde)}
+.buscador .lupa{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:1.05rem;color:var(--suave);pointer-events:none}
+.buscador button{padding:0 20px; border:0; border-radius:10px; background:#111; color:#fff; font-weight:700; cursor:pointer; font-size:.9rem; transition:all .15s;}
+.buscador button.verde{background:var(--verde); color:#111;}
+.buscador button.verde:hover{background:#b8f522}
+.buscador button:hover{background:#333}
+
+.filtros{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+.filtros input,.filtros select{padding:8px 11px;border:1px solid var(--borde);border-radius:8px;font-family:inherit;font-size:.82rem;background:#fff;min-width:0;flex:1;color:var(--texto)}
+.filtros input:focus,.filtros select:focus{outline:none;border-color:var(--verde)}
+
+.web-check{margin-top:8px;padding:10px 12px;background:#fff;border:1px solid var(--borde);border-radius:10px;display:none;}
+.web-check.visible{display:block}
+.web-check .label{font-size:.72rem;color:var(--suave);display:block;margin-bottom:6px}
+.web-check .links{display:flex;gap:6px;flex-wrap:wrap}
+.web-check a{padding:6px 11px;border:1px solid var(--borde);border-radius:8px;font-size:.74rem;text-decoration:none;color:#111;background:#fafafa;transition:all .15s;white-space:nowrap}
+.web-check a:hover{border-color:var(--verde);background:#fafff0}
+
+#resultados{margin-top:24px}
+.resumen{font-size:.82rem;color:var(--suave);margin-bottom:14px}
+.resumen b{color:#111;font-weight:700}
+.card{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:16px 18px;margin-bottom:8px;transition:border-color .15s}
+.card:hover{border-color:#d0d0d0}
+.card.oposicion{border-left:3px solid var(--magenta);padding-left:15px}
+.card .titulo{font-size:1rem;color:#111;margin:0 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.card .titulo a{color:#111;text-decoration:none}
+.card .titulo a:hover{color:var(--verde)}
+.badge{display:inline-block;font-size:.6rem;padding:3px 8px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase}
+.badge.gaceta{background:#eefad6;color:#5a8a00}
+.badge.oposicion{background:#f7e0ff;color:var(--magenta)}
+.campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:6px 18px;font-size:.83rem}
+.campo{display:flex;gap:6px;align-items:baseline}
+.campo .lbl{color:var(--suave);white-space:nowrap}
+.campo .val{color:#111}
+.campo .val.faltante{color:var(--magenta);font-style:italic}
+.card .footer{margin-top:10px;padding-top:9px;border-top:1px solid #f2f2f2;font-size:.72rem;color:#b0b0b0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.card .footer .acciones-card{display:flex;gap:12px}
+.card .footer a{color:var(--suave);text-decoration:none}
+.card .footer a:hover{color:var(--verde)}
+mark{background:var(--verde);color:#111;padding:1px 3px;border-radius:3px;font-weight:600}
+.vacio{color:var(--magenta);font-style:italic;font-size:.9rem;padding:10px 0}
+
+.social-check{margin:14px 0;padding:14px;background:#fff;border:1px solid var(--borde);border-radius:10px}
+.social-check .label{font-size:.82rem;color:var(--suave);display:block;margin-bottom:10px}
+.social-check .items{display:flex;gap:10px;flex-wrap:wrap}
+.social-item{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:20px;font-size:.82rem;border:1px solid var(--borde);background:#fafafa;transition:all .15s}
+.social-item .icon{font-size:1rem}
+.social-item.disponible{border-color:#a5eb04;background:#f4ffd9;color:#5a8a00;font-weight:600}
+.social-item.no-disponible{border-color:#e74c3c;background:#ffebeb;color:#c0392b;font-weight:600}
+.social-item.checking{border-color:#ddd;background:#f9f9f9;color:#888}
+.social-item a{color:inherit;text-decoration:none;font-weight:700}
+
+.pagination{display:flex;justify-content:center;align-items:center;gap:15px;margin:30px 0;}
+.pagination button{padding:8px 16px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-weight:700;color:var(--texto);cursor:pointer;}
+.pagination button:disabled{opacity:0.4;cursor:not-allowed;}
+.pagination .info-page{font-size:.82rem;color:var(--suave);font-weight:700;}
+footer{margin-top:60px;padding:24px 0 40px;border-top:1px solid var(--borde);text-align:center;font-size:.78rem;color:var(--suave)}
+footer a{color:var(--suave);text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1 class="logo">FranNing<span class="punto">.</span></h1>
+    <p class="sub">Verifica si tu nombre de marca es registrable</p>
+  </div>
+
+  <div class="sticky" id="stickyBar">
+    <div class="buscador">
+      <span class="lupa">⌕</span>
+      <input id="termino" type="text" placeholder='Buscar marca o sonido... (ej: "ZOI")' autocomplete="off">
+      <button id="btnBuscar" class="verde">Buscar</button>
+      <button id="btnExportar">📄 Reporte PDF</button>
+    </div>
+    <div class="filtros">
+      <input id="filtroAnio" type="text" placeholder="Año (ej: 2014)">
+      <input id="filtroClase" type="text" placeholder="Clase Niza (ej: 25)">
+      <input id="filtroPais" type="text" placeholder="País (ej: Ecuador)">
+    </div>
+    <div class="web-check" id="webCheckSticky">
+      <span class="label">Verificar en la web:</span>
+      <div class="links" id="webCheckLinks"></div>
+    </div>
+  </div>
+
+  <div id="resultados">
+    <p style="color:var(--suave); text-align:center; margin-top:50px;">🔄 Conectando a la base de datos de FranNing...</p>
+  </div>
+</div>
+<footer>Hecho por <b>Franklin Intriago</b> - 2026 · <a href="https://www.franklinintriago.com/politicas-de-pribacidad" target="_blank">Políticas de privacidad</a></footer>
+
+<script>
+// === CONEXIÓN CON GITHUB RELEASES ===
+// Asegúrate de que tu usuario de GitHub sea correcto
+const API_URL = "https://github.com/pruebasfranklinintriago-code/franning-automatizacion/releases/latest/download/marcas.json"; 
+
+let registros = [];
+let resultadosActuales = [];
+let paginaActual = 1;
+const PAGINA = 20;
+
+function normalize(s){ return (s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim(); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function escapeRegex(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+
+function codigoFonetico(s) { 
+  let str = normalize(s).toUpperCase().replace(/[^A-Z]/g, '');
+  if (!str) return "";
+  str = str.replace(/PH/g, "F").replace(/V/g, "B").replace(/Z/g, "S").replace(/LL/g, "Y").replace(/H/g, "").replace(/C([EI])/g, "S$1").replace(/G([EI])/g, "J$1").replace(/(.)\1+/g, "$1");
+  let codes = "";
+  for (let i = 1; i < str.length; i++) {
+    let char = str[i];
+    if ("BFPV".includes(char)) codes += "1";
+    else if ("CGJKQSXZ".includes(char)) codes += "2";
+    else if ("DT".includes(char)) codes += "3";
+    else if ("L".includes(char)) codes += "4";
+    else if ("MN".includes(char)) codes += "5";
+    else if ("R".includes(char)) codes += "6";
+  }
+  return (str[0] + codes.replace(/(.)\1+/g, "$1") + "000").substring(0, 4);
+}
+function similitudFonetica(a, b) {
+  const ca = codigoFonetico(a), cb = codigoFonetico(b);
+  if (!ca || !cb) return 0;
+  if (ca === cb) return 1.0; 
+  const dp = Array(ca.length+1).fill().map(() => Array(cb.length+1).fill(0));
+  for(let i=0;i<=ca.length;i++) dp[i][0]=i; for(let j=0;j<=cb.length;j++) dp[0][j]=j; 
+  for(let i=1;i<=ca.length;i++) for(let j=1;j<=cb.length;j++) dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1] + (ca[i-1]===cb[j-1]?0:1)); 
+  return 1 - dp[ca.length][cb.length]/Math.max(ca.length, cb.length); 
+}
+
+async function cargarDatos() {
+  document.getElementById('resultados').innerHTML = `<p style="color:var(--suave); text-align:center; margin-top:50px;">🔄 Descargando base de datos desde GitHub...</p>`;
+  try {
+    const res = await fetch(API_URL);
+    if(!res.ok) throw new Error("Error de red");
+    registros = await res.json();
+    document.getElementById('resultados').innerHTML = `<p style="color:var(--suave); text-align:center; margin-top:20px;">✅ Base de datos conectada. <b>${registros.length}</b> marcas cargadas.</p>`;
+  } catch (e) {
+    document.getElementById('resultados').innerHTML = `<p style="color:var(--magenta); text-align:center; margin-top:20px;">⚠️ Error de conexión. Asegúrate de que el repositorio en GitHub sea público.</p>`;
+  }
+}
+
+function buscar() {
+  const termino = document.getElementById('termino').value.trim();
+  const fAnio = document.getElementById('filtroAnio').value.trim();
+  const fClase = document.getElementById('filtroClase').value.trim();
+  const fPais = normalize(document.getElementById('filtroPais').value);
+  
+  if(!termino && !fAnio && !fClase && !fPais) {
+    document.getElementById('resultados').innerHTML = '<p style="color:var(--suave); text-align:center; margin-top:20px;">Ingresa un término o filtro.</p>';
+    return;
+  }
+
+  resultadosActuales = registros.filter(r => {
+    if(fAnio && String(r.anio||"") !== fAnio && String(r.fechaPresentacion||"").indexOf(fAnio) === -1) return false;
+    if(fClase && String(r.claseNiza||"") !== fClase) return false;
+    if(fPais && !normalize(r.pais||"").includes(fPais)) return false;
+    
+    if(termino) {
+      const campos = [r.denominacion, r.solicitante, r.titular];
+      let match = false;
+      for(const c of campos) {
+        if(!c) continue;
+        const nc = normalize(c);
+        if(nc.includes(normalize(termino))) { match = true; break; }
+        if(similitudFonetica(termino, c) >= 0.85) { match = true; break; } 
+      }
+      if(!match) return false;
+    }
+    return true;
+  });
+
+  paginaActual = 1;
+  renderizar(termino);
+}
+
+document.getElementById('btnBuscar').addEventListener('click', buscar);
+document.getElementById('termino').addEventListener('keypress', (e) => { if (e.key === 'Enter') buscar(); });
+
+function actualizarWebCheck(termino){
+  const webCheck = document.getElementById("webCheckSticky"), links = document.getElementById("webCheckLinks");
+  if(!termino){ webCheck.classList.remove("visible"); return; }
+  const q = encodeURIComponent(termino.replace(/\s+/g, ""));
+  links.innerHTML = `
+    <a href="https://www.google.com/search?q=%22${encodeURIComponent(termino)}%22" target="_blank">🔍 Google</a>
+    <a href="https://www.namecheap.com/domains/registration/results/?domain=${q}.com" target="_blank">🌐 ${q}.com</a>
+    <a href="https://es.wikipedia.org/w/index.php?search=${encodeURIComponent(termino)}" target="_blank">📖 Wikipedia</a>
+    <a href="https://www.instagram.com/${q}/" target="_blank">📷 Instagram</a>
+    <a href="https://www.facebook.com/${q}/" target="_blank">👥 Facebook</a>
+  `;
+  webCheck.classList.add("visible");
+}
+
+async function verificarRedSocial(usuario, red){
+  return new Promise(resolve => setTimeout(() => resolve("error"), 1500));
+}
+
+async function verificarRedesEnCards(){
+  const items = document.querySelectorAll(".social-item[data-usuario]");
+  for(const item of items){
+    if(item.dataset.verificado === "1") continue;
+    item.dataset.verificado = "1";
+    const estadoEl = item.querySelector(".estado");
+    if(estadoEl) estadoEl.textContent = "⏳ verificando...";
+    const resultado = await verificarRedSocial(item.dataset.usuario, item.dataset.red);
+    item.classList.remove("checking");
+    if(resultado === "disponible"){ item.classList.add("disponible"); if(estadoEl) estadoEl.textContent = "✅ Disponible"; }
+    else if(resultado === "no-disponible"){ item.classList.add("no-disponible"); if(estadoEl) estadoEl.textContent = "🔴 No disponible"; }
+    else { item.classList.add("error"); if(estadoEl) estadoEl.textContent = "⚠️ Verificar"; }
+  }
+}
+
+function renderizar(termino){
+  const resEl = document.getElementById("resultados");
+  resEl.innerHTML = "";
+  actualizarWebCheck(termino);
+
+  if(resultadosActuales.length === 0){
+    resEl.innerHTML = '<p class="vacio" style="text-align:center; margin-top:20px;">Sin coincidencias fonéticas o exactas.</p>';
+    return;
+  }
+
+  resEl.innerHTML = `<div class="resumen">Se encontraron <b>${resultadosActuales.length}</b> coincidencias.</div>`;
+  const totalPaginas = Math.ceil(resultadosActuales.length / PAGINA);
+  const inicio = (paginaActual - 1) * PAGINA;
+  const fin = Math.min(inicio + PAGINA, resultadosActuales.length);
+
+  const frag = document.createDocumentFragment();
+  for(let i=inicio; i<fin; i++){ frag.appendChild(crearCard(resultadosActuales[i], termino)); }
+  resEl.appendChild(frag);
+
+  if(totalPaginas > 1) {
+      const pagDiv = document.createElement("div");
+      pagDiv.className = "pagination";
+      pagDiv.innerHTML = `
+        <button ${paginaActual === 1 ? 'disabled' : ''} onclick="cambiarPagina(-1)">← Anterior</button>
+        <span class="info-page">Página ${paginaActual} de ${totalPaginas}</span>
+        <button ${paginaActual === totalPaginas ? 'disabled' : ''} onclick="cambiarPagina(1)">Siguiente →</button>
+      `;
+      resEl.appendChild(pagDiv);
+  }
+  setTimeout(() => verificarRedesEnCards(), 100);
+}
+
+function cambiarPagina(delta){
+  paginaActual += delta;
+  renderizar(document.getElementById('termino').value.trim());
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function crearCard(r, termino){
+  const div = document.createElement("div");
+  div.className = "card" + (r.fuente === "oposicion" ? " oposicion" : "");
+  let marca = r.denominacion ? escapeHtml(r.denominacion) : '<span style="color:var(--magenta);font-style:italic">Sin denominación</span>';
+  if(termino) marca = marca.replace(new RegExp(escapeRegex(termino), "gi"), m => `<mark>${m}</mark>`);
+  
+  const val = v => v ? escapeHtml(v) : '<span class="val faltante">No encontrado</span>';
+  const badge = r.fuente === "oposicion" ? '<span class="badge oposicion">Oposición</span>' : '<span class="badge gaceta">Gaceta</span>';
+  
+  let camposHTML = "";
+  if(r.fuente === "gaceta"){
+    camposHTML = `<div class="campo"><span class="lbl">País</span> <span class="val">${val(r.pais)}</span></div><div class="campo"><span class="lbl">Clase Niza</span> <span class="val">${val(r.claseNiza)}</span></div><div class="campo"><span class="lbl">Fecha</span> <span class="val">${val(r.fechaPresentacion)}</span></div><div class="campo"><span class="lbl">Trámite</span> <span class="val">${val(r.tramite || r.numeroSolicitud)}</span></div><div class="campo"><span class="lbl">Titular</span> <span class="val">${val(r.titular || r.solicitante)}</span></div>`;
+  } else {
+    camposHTML = `<div class="campo"><span class="lbl">Ciudad</span> <span class="val">${val(r.ciudad)}</span></div><div class="campo"><span class="lbl">Año</span> <span class="val">${val(r.anio)}</span></div>`;
+  }
+  
+  const pie = r.fuente === "gaceta" ? `Gaceta ${r.gaceta||"?"} · pág ${r.pagina||"?"}` : `Oposición ${r.gaceta||"?"} · ${r.ciudad||"General"}`;
+  const nombreMarca = (r.denominacion || "").replace(/\s+/g, "");
+  
+  let socialHTML = "";
+  if(nombreMarca && nombreMarca.length >= 3 && nombreMarca.length <= 30 && /^[a-zA-Z0-9_]+$/.test(nombreMarca)){
+    socialHTML = `
+      <div class="social-check">
+        <span class="label">Verificar redes sociales:</span>
+        <div class="items">
+          <div class="social-item checking" data-usuario="${escapeHtml(nombreMarca)}" data-red="instagram">
+            <span class="icon">📷</span><span class="red">Instagram</span><span class="estado">⏳ pendiente...</span>
+            <a href="https://www.instagram.com/${encodeURIComponent(nombreMarca)}/" target="_blank">↗</a>
+          </div>
+          <div class="social-item checking" data-usuario="${escapeHtml(nombreMarca)}" data-red="facebook">
+            <span class="icon">👥</span><span class="red">Facebook</span><span class="estado">⏳ pendiente...</span>
+            <a href="https://www.facebook.com/${encodeURIComponent(nombreMarca)}/" target="_blank">↗</a>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  const accionesCard = r.denominacion ? `<div class="acciones-card"><a href="https://www.google.com/search?q=%22${encodeURIComponent(r.denominacion)}%22" target="_blank" title="Buscar en Google">🔍 web</a><a href="https://www.namecheap.com/domains/registration/results/?domain=${encodeURIComponent(nombreMarca)}.com" target="_blank" title="Verificar .com">🌐 .com</a></div>` : "";
+  
+  div.innerHTML = `<h3 class="titulo">${marca} ${badge}</h3><div class="campos">${camposHTML}</div>${socialHTML}<div class="footer"><span>${pie} · ${escapeHtml(r.archivo || '')}</span>${accionesCard}</div>`;
+  return div;
+}
+
+document.getElementById('btnExportar').addEventListener('click', () => {
+  if(resultadosActuales.length === 0) return alert("Realiza una búsqueda primero.");
+  
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('landscape');
+  
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(28);
+  doc.setTextColor(17, 17, 17);
+  doc.text("FranNing", 14, 20);
+  
+  const textWidth = doc.getTextWidth("FranNing");
+  doc.setTextColor(165, 235, 4);
+  doc.text(".", 14 + textWidth, 20);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10); 
+  doc.setTextColor(136, 136, 136);
+  doc.text("Reporte de Búsqueda Fonética de Marcas", 14, 27);
+  doc.text(`Fecha: ${new Date().toLocaleString()}`, 14, 32);
+  doc.text(`Término buscado: "${document.getElementById('termino').value}"`, 14, 37);
+  
+  const tableData = resultadosActuales.map(r => [
+    r.claseNiza || '', r.denominacion || '', r.tramite || r.numeroSolicitud || '', r.fechaPresentacion || '', r.gaceta || '', r.titular || r.solicitante || '', r.estadoSigno || 'MIGRADO'
+  ]);
+
+  doc.autoTable({
+    startY: 45,
+    head: [['Clase', 'Denominación', 'Trámite', 'Fecha Pres.', 'Gaceta', 'Titular', 'Estado']],
+    body: tableData,
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [165, 235, 4], textColor: [17, 17, 17], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [250, 250, 250] }
+  });
+
+  doc.save(`Reporte_FranNing_${document.getElementById('termino').value || 'Busqueda'}.pdf`);
+});
+
+cargarDatos();
+</script>
+</body>
+</html>
