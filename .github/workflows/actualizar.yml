@@ -1,0 +1,53 @@
+name: Actualizar Base de Datos de Marcas
+
+on:
+  workflow_dispatch: # Esto te permite ejecutarlo manualmente con un botón cuando quieras
+  schedule:
+    - cron: '0 3 1 * *' # Se ejecutará solo el día 1 de cada mes a las 3:00 AM
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Clonar el repositorio
+      uses: actions/checkout@v3
+
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Crear archivo de credenciales de Google
+      run: echo '${{ secrets.GCP_CREDENTIALS }}' > credenciales.json
+
+    - name: Ejecutar el script de Python
+      run: python procesar_pdfs.py
+
+    - name: Publicar marcas.json en GitHub Releases
+      uses: softprops/action-gh-release@v1
+      with:
+        files: marcas.json
+        tag_name: ultima_actualizacion
+        name: "Última Actualización de Marcas"
+        body: "Archivo marcas.json generado automáticamente."
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Preparar carpeta para Cloudflare
+      run: |
+        mkdir public
+        cp index.html public/
+
+    - name: Desplegar en Cloudflare Pages
+      uses: cloudflare/pages-action@v1
+      with:
+        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        projectName: franning-buscador-marcas
+        directory: public
